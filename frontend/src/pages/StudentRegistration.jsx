@@ -18,6 +18,7 @@ const StudentRegistration = () => {
     previousDegree: '',
     percentage: '',
     yearPassed: '',
+    semester: '', // 👉 ADDED HERE
   });
 
   const [status, setStatus] = useState('');
@@ -49,6 +50,7 @@ const StudentRegistration = () => {
         previousDegree: '',
         percentage: '',
         yearPassed: '',
+        semester: '', // 👉 ADDED HERE
       });
     } catch (error) {
       console.error(error);

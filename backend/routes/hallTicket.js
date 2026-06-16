@@ -5,7 +5,7 @@ import Student from '../models/Student.js';
 
 const router = express.Router();
 
-// ✅ POST /api/hall-ticket/generate
+// POST /api/hall-ticket/generate
 router.post('/generate', async (req, res) => {
   const { studentIds, sem, examCenter } = req.body;
 
@@ -41,56 +41,57 @@ router.post('/generate', async (req, res) => {
     }
 
     res.json({
-      message: `✅ Hall ticket generation complete`,
+      message: 'Hall ticket generation complete',
       generatedCount: hallTickets.length,
       alreadyGeneratedCount: alreadyGenerated.length,
       alreadyGeneratedStudents: alreadyGenerated
     });
   } catch (err) {
     console.error('❌ Error generating hall tickets:', err);
-    res.status(500).json({
-      message: 'Error generating hall tickets',
-      error: err.message
-    });
+    res.status(500).json({ message: 'Error generating hall tickets', error: err.message });
   }
 });
 
-// ✅ GET /api/hall-ticket/all
+// GET /api/hall-ticket/all
 router.get('/all', async (req, res) => {
   try {
     const tickets = await HallTicket.find()
       .populate('student')
-      .populate('timetable.subject');
+      .populate('timetable.subject'); // works only if subject is ref
     res.json(tickets);
   } catch (err) {
     console.error('❌ Error fetching hall tickets:', err);
     res.status(500).json({ message: 'Failed to fetch hall tickets', error: err.message });
   }
 });
-// ✅ GET /api/hall-ticket/generated/:sem
+
+// GET /api/hall-ticket/generated/:sem
 router.get('/generated/:sem', async (req, res) => {
   const { sem } = req.params;
 
   try {
     const tickets = await HallTicket.find({ sem }).populate('student');
-    res.json(tickets); // frontend will extract student._id from this
+    res.json(tickets);
   } catch (err) {
     console.error('❌ Error fetching generated hall tickets:', err);
     res.status(500).json({ message: 'Failed to fetch hall tickets', error: err.message });
   }
 });
+
 // GET /api/hall-ticket/student/:studentId
 router.get('/student/:studentId', async (req, res) => {
   const { studentId } = req.params;
 
   try {
-    const ticket = await HallTicket.findOne({ student: studentId })
+    const tickets = await HallTicket.find({ student: studentId })
       .populate('student', 'name usn sem')
       .populate('timetable.subject', 'name code');
 
-    if (!ticket) return res.status(404).json({ message: 'Hall ticket not found' });
+    if (!tickets || tickets.length === 0) {
+      return res.status(404).json({ message: 'Hall ticket not found' });
+    }
 
-    res.json(ticket);
+    res.json(tickets);
   } catch (err) {
     console.error('❌ Error fetching hall ticket:', err);
     res.status(500).json({ message: 'Server error', error: err.message });
