@@ -91,7 +91,9 @@ const usn = `${prefix}${paddedCount}`;
       const pdfData = Buffer.concat(buffers);
 
       const transporter = nodemailer.createTransport({
-        service: 'gmail',
+        host: 'smtp.gmail.com',
+        port: 587,
+        secure: false,
         auth: {
           user: process.env.MAIL_USER,
           pass: process.env.MAIL_PASS
@@ -278,3 +280,4 @@ router.get('/profile/:email', async (req, res) => {
 
 
 export default router;
+

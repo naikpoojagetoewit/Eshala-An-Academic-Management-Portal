@@ -9,7 +9,9 @@ const router = express.Router();
 
 // Nodemailer transporter
 const transporter = nodemailer.createTransport({
-  service: 'gmail',
+  host: 'smtp.gmail.com',
+        port: 587,
+        secure: false,
   auth: {
     user: 'eshaala.official20@gmail.com',      // 🔁 Replace
     pass: 'hsfz lgyh zbwp gels',    // 🔁 App password, not Gmail password
@@ -60,3 +62,4 @@ router.post('/reset-password', async (req, res) => {
 });
 
 export default router;
+
