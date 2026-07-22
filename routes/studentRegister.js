@@ -3,7 +3,7 @@ import mongoose from 'mongoose';
 import Student from '../models/Student.js';
 import Lecturer from '../models/Lecturer.js';
 import User from '../models/User.js';
-import nodemailer from 'nodemailer';
+import { Resend } from 'resend';
 import PDFDocument from 'pdfkit';
 import bcrypt from 'bcryptjs';
 
@@ -90,19 +90,10 @@ const usn = `${prefix}${paddedCount}`;
     doc.on('end', async () => {
       const pdfData = Buffer.concat(buffers);
 
-      const transporter = nodemailer.createTransport({
-        host: 'smtp.gmail.com',
-        port: 587,
-        secure: false,
-        auth: {
-          user: process.env.MAIL_USER,
-          pass: process.env.MAIL_PASS
-        }
-      });
-
       try {
-        await transporter.sendMail({
-          from: process.env.MAIL_USER,
+        const resend = new Resend(process.env.RESEND_API_KEY);
+        await resend.emails.send({
+          from: 'onboarding@resend.dev',
           to: email,
           subject: 'Eshala - Student Login Details',
           text: `Hello ${name},
@@ -120,7 +111,7 @@ Please find your registration details attached as a PDF.`,
           attachments: [
             {
               filename: 'student-details.pdf',
-              content: pdfData
+              content: pdfData.toString('base64')
             }
           ]
         });
@@ -280,4 +271,3 @@ router.get('/profile/:email', async (req, res) => {
 
 
 export default router;
-
