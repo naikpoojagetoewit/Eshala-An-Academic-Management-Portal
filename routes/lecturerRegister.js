@@ -1,7 +1,7 @@
 import express from 'express';
 import Lecturer from '../models/Lecturer.js';
 import User from '../models/User.js';
-import nodemailer from 'nodemailer';
+import * as brevo from '@getbrevo/brevo';
 
 import PDFDocument from 'pdfkit';
 import bcrypt from 'bcryptjs';
@@ -55,34 +55,37 @@ router.post('/register', async (req, res) => {
     doc.on('end', async () => {
       const pdfData = Buffer.concat(buffers);
 
-      const transporter = nodemailer.createTransport({
-        host: 'smtp.gmail.com',
-        port: 587,
-        secure: false,
-        auth: {
-          user: process.env.MAIL_USER,
-          pass: process.env.MAIL_PASS
-        }
-      });
-
       try {
-        await transporter.sendMail({
-          from: process.env.MAIL_USER,
-          to: email,
-          subject: 'Eshala - Lecturer Login Details',
-          text: `Hello ${fullName},\n\nYou have been registered as a lecturer on the Eshala platform.\n\nLogin Email: ${email}\nPassword: ${password}\n\nPlease find your registration details attached as a PDF.`,
-          attachments: [
-            {
-              filename: 'lecturer-details.pdf',
-              content: pdfData
-            }
-          ]
-        });
+        const apiInstance = new brevo.TransactionalEmailsApi();
+        apiInstance.setApiKey(
+          brevo.TransactionalEmailsApiApiKeys.apiKey,
+          process.env.BREVO_API_KEY
+        );
+
+        const sendSmtpEmail = new brevo.SendSmtpEmail();
+        sendSmtpEmail.subject = 'Eshala - Lecturer Login Details';
+        sendSmtpEmail.sender = { name: 'Eshala', email: 'eshaala.official20@gmail.com' };
+        sendSmtpEmail.to = [{ email, name: fullName }];
+        sendSmtpEmail.htmlContent = `
+          <p>Hello ${fullName},</p>
+          <p>You have been registered as a lecturer on the Eshala platform.</p>
+          <p><strong>Login Email:</strong> ${email}<br/>
+          <strong>Password:</strong> ${password}</p>
+          <p>Please find your registration details attached as a PDF.</p>
+        `;
+        sendSmtpEmail.attachment = [
+          {
+            content: pdfData.toString('base64'),
+            name: 'lecturer-details.pdf'
+          }
+        ];
+
+        await apiInstance.sendTransacEmail(sendSmtpEmail);
 
         return res.status(201).json({ message: '✅ Lecturer registered and email sent' });
       } catch (emailError) {
         console.error('❌ Email sending failed:', emailError.message);
-        return res.status(500).json({ message: 'Lecturer saved, but email failed', error: emailError.message });
+        return res.status(201).json({ message: 'Lecturer saved, but email failed', error: emailError.message });
       }
     });
 
@@ -199,4 +202,3 @@ router.get('/subjects/:lecturerId', async (req, res) => {
 
 
 export default router;
-
