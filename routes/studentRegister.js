@@ -3,7 +3,7 @@ import mongoose from 'mongoose';
 import Student from '../models/Student.js';
 import Lecturer from '../models/Lecturer.js';
 import User from '../models/User.js';
-import { Resend } from 'resend';
+import * as brevo from '@getbrevo/brevo';
 import PDFDocument from 'pdfkit';
 import bcrypt from 'bcryptjs';
 
@@ -91,36 +91,39 @@ const usn = `${prefix}${paddedCount}`;
       const pdfData = Buffer.concat(buffers);
 
       try {
-        const resend = new Resend(process.env.RESEND_API_KEY);
-        await resend.emails.send({
-          from: 'onboarding@resend.dev',
-          to: email,
-          subject: 'Eshala - Student Login Details',
-          text: `Hello ${name},
+        const apiInstance = new brevo.TransactionalEmailsApi();
+        apiInstance.setApiKey(
+          brevo.TransactionalEmailsApiApiKeys.apiKey,
+          process.env.BREVO_API_KEY
+        );
 
-You have been successfully registered as a student.
+        const sendSmtpEmail = new brevo.SendSmtpEmail();
+        sendSmtpEmail.subject = 'Eshala - Student Login Details';
+        sendSmtpEmail.sender = { name: 'Eshala', email: 'eshaala.official20@gmail.com' };
+        sendSmtpEmail.to = [{ email, name }];
+        sendSmtpEmail.htmlContent = `
+          <p>Hello ${name},</p>
+          <p>You have been successfully registered as a student on the Eshala platform.</p>
+          <p><strong>Login Email:</strong> ${email}<br/>
+          <strong>Password:</strong> ${password}</p>
+          <p><strong>Course:</strong> ${course}<br/>
+          <strong>Semester:</strong> ${sem}</p>
+          <p>Please find your registration details attached as a PDF.</p>
+        `;
+        sendSmtpEmail.attachment = [
+          {
+            content: pdfData.toString('base64'),
+            name: 'student-details.pdf'
+          }
+        ];
 
-Login Email: ${email}
-Password: ${password}
-
-Course: ${course}
-Semester: ${sem}
-
-Please find your registration details attached as a PDF.`,
-
-          attachments: [
-            {
-              filename: 'student-details.pdf',
-              content: pdfData.toString('base64')
-            }
-          ]
-        });
+        await apiInstance.sendTransacEmail(sendSmtpEmail);
 
         return res.status(201).json({ message: '✅ Student registered and email sent' });
 
       } catch (emailError) {
         console.error('❌ Email sending failed:', emailError.message);
-        return res.status(500).json({ message: 'Student saved, but email failed', error: emailError.message });
+        return res.status(201).json({ message: 'Student saved, but email failed', error: emailError.message });
       }
     });
 
