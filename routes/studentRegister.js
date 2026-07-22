@@ -3,9 +3,6 @@ import mongoose from 'mongoose';
 import Student from '../models/Student.js';
 import Lecturer from '../models/Lecturer.js';
 import User from '../models/User.js';
-import { createRequire } from 'module';
-const require = createRequire(import.meta.url);
-const brevo = require('@getbrevo/brevo');
 import PDFDocument from 'pdfkit';
 import bcrypt from 'bcryptjs';
 
@@ -93,33 +90,41 @@ const usn = `${prefix}${paddedCount}`;
       const pdfData = Buffer.concat(buffers);
 
       try {
-        const apiInstance = new brevo.TransactionalEmailsApi();
-        apiInstance.setApiKey(
-          brevo.TransactionalEmailsApiApiKeys.apiKey,
-          process.env.BREVO_API_KEY
-        );
+        const emailPayload = {
+          sender: { name: 'Eshala', email: 'eshaala.official20@gmail.com' },
+          to: [{ email, name }],
+          subject: 'Eshala - Student Login Details',
+          htmlContent: `
+            <p>Hello ${name},</p>
+            <p>You have been successfully registered as a student on the Eshala platform.</p>
+            <p><strong>Login Email:</strong> ${email}<br/>
+            <strong>Password:</strong> ${password}</p>
+            <p><strong>Course:</strong> ${course}<br/>
+            <strong>Semester:</strong> ${sem}</p>
+            <p>Please find your registration details attached as a PDF.</p>
+          `,
+          attachment: [
+            {
+              content: pdfData.toString('base64'),
+              name: 'student-details.pdf'
+            }
+          ]
+        };
 
-        const sendSmtpEmail = new brevo.SendSmtpEmail();
-        sendSmtpEmail.subject = 'Eshala - Student Login Details';
-        sendSmtpEmail.sender = { name: 'Eshala', email: 'eshaala.official20@gmail.com' };
-        sendSmtpEmail.to = [{ email, name }];
-        sendSmtpEmail.htmlContent = `
-          <p>Hello ${name},</p>
-          <p>You have been successfully registered as a student on the Eshala platform.</p>
-          <p><strong>Login Email:</strong> ${email}<br/>
-          <strong>Password:</strong> ${password}</p>
-          <p><strong>Course:</strong> ${course}<br/>
-          <strong>Semester:</strong> ${sem}</p>
-          <p>Please find your registration details attached as a PDF.</p>
-        `;
-        sendSmtpEmail.attachment = [
-          {
-            content: pdfData.toString('base64'),
-            name: 'student-details.pdf'
-          }
-        ];
+        const brevoResponse = await fetch('https://api.brevo.com/v3/smtp/email', {
+          method: 'POST',
+          headers: {
+            'accept': 'application/json',
+            'api-key': process.env.BREVO_API_KEY,
+            'content-type': 'application/json'
+          },
+          body: JSON.stringify(emailPayload)
+        });
 
-        await apiInstance.sendTransacEmail(sendSmtpEmail);
+        if (!brevoResponse.ok) {
+          const errorBody = await brevoResponse.text();
+          throw new Error(`Brevo API error (${brevoResponse.status}): ${errorBody}`);
+        }
 
         return res.status(201).json({ message: '✅ Student registered and email sent' });
 
