@@ -1,7 +1,7 @@
 import express from 'express';
 import Lecturer from '../models/Lecturer.js';
 import User from '../models/User.js';
-import * as brevo from '@getbrevo/brevo';
+import { TransactionalEmailsApi, TransactionalEmailsApiApiKeys, SendSmtpEmail } from '@getbrevo/brevo';
 
 import PDFDocument from 'pdfkit';
 import bcrypt from 'bcryptjs';
@@ -56,13 +56,13 @@ router.post('/register', async (req, res) => {
       const pdfData = Buffer.concat(buffers);
 
       try {
-        const apiInstance = new brevo.TransactionalEmailsApi();
+        const apiInstance = new TransactionalEmailsApi();
         apiInstance.setApiKey(
-          brevo.TransactionalEmailsApiApiKeys.apiKey,
+          TransactionalEmailsApiApiKeys.apiKey,
           process.env.BREVO_API_KEY
         );
 
-        const sendSmtpEmail = new brevo.SendSmtpEmail();
+        const sendSmtpEmail = new SendSmtpEmail();
         sendSmtpEmail.subject = 'Eshala - Lecturer Login Details';
         sendSmtpEmail.sender = { name: 'Eshala', email: 'eshaala.official20@gmail.com' };
         sendSmtpEmail.to = [{ email, name: fullName }];
