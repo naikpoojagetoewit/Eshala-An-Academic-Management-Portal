@@ -3,6 +3,7 @@ import mongoose from 'mongoose';
 import Student from '../models/Student.js';
 import Lecturer from '../models/Lecturer.js';
 import User from '../models/User.js';
+import nodemailer from 'nodemailer';
 import PDFDocument from 'pdfkit';
 import bcrypt from 'bcryptjs';
 
@@ -89,42 +90,29 @@ const usn = `${prefix}${paddedCount}`;
     doc.on('end', async () => {
       const pdfData = Buffer.concat(buffers);
 
+      const transporter = nodemailer.createTransport({
+        host: 'smtp.gmail.com',
+        port: 465,
+        secure: true,
+        auth: {
+          user: process.env.MAIL_USER,
+          pass: process.env.MAIL_PASS
+        }
+      });
+
       try {
-        const emailPayload = {
-          sender: { name: 'Eshala', email: 'eshaala.official20@gmail.com' },
-          to: [{ email, name }],
+        await transporter.sendMail({
+          from: process.env.MAIL_USER,
+          to: email,
           subject: 'Eshala - Student Login Details',
-          htmlContent: `
-            <p>Hello ${name},</p>
-            <p>You have been successfully registered as a student on the Eshala platform.</p>
-            <p><strong>Login Email:</strong> ${email}<br/>
-            <strong>Password:</strong> ${password}</p>
-            <p><strong>Course:</strong> ${course}<br/>
-            <strong>Semester:</strong> ${sem}</p>
-            <p>Please find your registration details attached as a PDF.</p>
-          `,
-          attachment: [
+          text: `Hello ${name},\n\nYou have been successfully registered as a student on the Eshala platform.\n\nLogin Email: ${email}\nPassword: ${password}\n\nCourse: ${course}\nSemester: ${sem}\n\nPlease find your registration details attached as a PDF.`,
+          attachments: [
             {
-              content: pdfData.toString('base64'),
-              name: 'student-details.pdf'
+              filename: 'student-details.pdf',
+              content: pdfData
             }
           ]
-        };
-
-        const brevoResponse = await fetch('https://api.brevo.com/v3/smtp/email', {
-          method: 'POST',
-          headers: {
-            'accept': 'application/json',
-            'api-key': process.env.BREVO_API_KEY,
-            'content-type': 'application/json'
-          },
-          body: JSON.stringify(emailPayload)
         });
-
-        if (!brevoResponse.ok) {
-          const errorBody = await brevoResponse.text();
-          throw new Error(`Brevo API error (${brevoResponse.status}): ${errorBody}`);
-        }
 
         return res.status(201).json({ message: '✅ Student registered and email sent' });
 
